@@ -6,11 +6,11 @@ DocMeta.setdocmeta!(georectification, :DocTestSetup, :(using georectification); 
 makedocs(;
     modules=[georectification],
     authors="john.louis.waczak@gmail.com",
-    repo="https://github.com/john-waczak/georectification.jl/blob/{commit}{path}#{line}",
+    repo="https://github.com/mi3nts/georectification.jl/blob/{commit}{path}#{line}",
     sitename="georectification.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://john-waczak.github.io/georectification.jl",
+        canonical="https://mi3nts.github.io/georectification.jl",
         assets=String[],
     ),
     pages=[
@@ -19,6 +19,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/john-waczak/georectification.jl",
+    repo="github.com/mi3nts/georectification.jl",
     devbranch="main",
 )
