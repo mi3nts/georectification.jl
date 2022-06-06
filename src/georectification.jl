@@ -33,15 +33,21 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
     calibrationOffsetPath = joinpath(calibrationPath, "offset.spec")
     calibrationOffsetHdrPath = joinpath(calibrationPath, "offset.spec.hdr")
 
-    gainCube = HSI(calibrationGainPath, calibrationGainHdrPath)
-    offsetCube = HSI(calibrationOffsetPath, calibrationOffsetHdrPath)
-    spec = HSI(specPath, specHdrPath)
+    gain_df = readToDataFrame(calibrationGainPath, calibrationGainHdrPath)
+    gain_hdr = getHdrFile(calibrationGainHdrPath)
+
+
+    offset_df = readToDataFrame(calibrationOffsetPath, calibrationOffsetHdrPath)
+    offset_hdr = getHdrFile(calibrationOffsetHdrPath)
+
+    spec = readToDataFrame(specPath, specHdrPath)
+    spec_hdr = getHdrFile(specHdrPath)
 
 
     # calculate shutter differences
     #----------------------------------------------------------------------
-    cal_shutter = gainCube.info["shutter"]
-    spec_shutter = spec.info["shutter"]
+    cal_shutter = gain_hdr["shutter"]
+    spec_shutter = spec_hdr["shutter"]
     gain_factor = cal_shutter/spec_shutter # should automatically convert to type float
 
 
