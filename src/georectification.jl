@@ -6,10 +6,28 @@ using Geodesy
 using Rotations
 using StaticArrays
 using DataInterpolations
+using Statistics
 
 include("HSI.jl")
 include("IMU.jl")
 
+
+
+export getHdrFile
+export getTimes
+export readToDataFrame
+export getHdrFile
+export getIMUdata
+export Rotate
+export masterLCF
+export generateReflectance!
+export generateDerivedMetrics!
+export getHSIFlightData
+export imagecoords
+export imagecoordsFlipped
+export Coords!
+export ilat_ilon!
+export georectify
 
 
 
@@ -40,7 +58,7 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
     offset_df = readToDataFrame(calibrationOffsetPath, calibrationOffsetHdrPath)
     offset_hdr = getHdrFile(calibrationOffsetHdrPath)
 
-    spec = readToDataFrame(specPath, specHdrPath)
+    spec_df = readToDataFrame(specPath, specHdrPath)
     spec_hdr = getHdrFile(specHdrPath)
 
 
@@ -50,12 +68,16 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
     spec_shutter = spec_hdr["shutter"]
     gain_factor = cal_shutter/spec_shutter # should automatically convert to type float
 
+    # for easier looping
+    nλ_gain = size(gain_hdr["wavelength"], 1)
+    nλ_offset = size(offset_hdr["wavelength"], 1)
+    nλ_spec = size(spec_hdr["wavelength"], 1)
+
 
     # produce the correction frames
     #----------------------------------------------------------------------
-    adjusted_gain = gain_factor .* gainCube.data
-    frame = spec.data .- offsetCube.data
-
+    adjusted_gain = gain_factor .* vec(Matrix(gain_df[!, 1:nλ_gain]))
+    frame = vec(Matrix(spec_df[!, 1:nλ_spec])) .- vec(Matrix(offset_df[!, 1:nλ_offset]))
 
     # calculate correction
     #----------------------------------------------------------------------
@@ -65,7 +87,7 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
 
     # interpolate the correction to match the datacube's wavelengths
     #----------------------------------------------------------------------
-    interp = CubicSpline(correction[:,1,1], spec.info["wavelength"])
+    interp = CubicSpline(correction[:], spec_hdr["wavelength"])
     adjustedSpec = interp.(wavelengths)
 
 
@@ -804,20 +826,4 @@ function georectify(bilpath::String,
 end
 
 
-
-export getHdrFile
-export getTimes
-export readToDataFrame
-export getHdrFile
-export getIMUdata
-export Rotate
-export masterLCF
-export generateReflectance!
-export generateDerivedMetrics!
-export getHSIFlightData
-export imagecoords
-export imagecoordsFlipped
-export Coords!
-export ilat_ilon!
-export georectify
 end

@@ -86,6 +86,10 @@ function readToDataFrame(pathToBinaryFile::String, pathToHdrFile::String, pathTo
     typeDict[12] = UInt16
 
     info = getHdrFile(pathToHdrFile)
+
+    λs = info["wavelength"]
+    n_λs = size(λs, 1)
+
     ncols = info["samples"]
     nbands = info["bands"]
     nrows = info["lines"]
@@ -100,8 +104,9 @@ function readToDataFrame(pathToBinaryFile::String, pathToHdrFile::String, pathTo
     elseif info["interleave"] == "bip"
         data = Array{typeDict[info["data_type"]]}(undef, info["bands"], info["samples"], info["lines"])
         read!(pathToBinaryFile, data)
-        data = reshape(data), (nbands, ncols*nrows)
+        data = reshape(data, (nbands, ncols*nrows))
         info["data_shape"] = "band, col×row"
+
     elseif info["interleave"] == "bsq"
         data = Array{typeDict[info["data_type"]]}(undef, info["samples"], info["lines"], info["bands"])
         read!(pathToBinaryFile, data)
@@ -114,28 +119,24 @@ function readToDataFrame(pathToBinaryFile::String, pathToHdrFile::String, pathTo
     end
 
     # fill array with the data
-
-    if pathToTimes == ""
-        times = []
-    else
-        times = getTimes(pathToTimes)
-    end
-
-    times_array = vcat([times' for _ ∈ 1:ncols]...)
-    times_final = reshape(times_array, ncols*nrows)
-
     row_indices = vcat([collect(1:nrows)' for _ ∈1:ncols]...)
     rows = reshape(row_indices, ncols*nrows)
 
 
-    names = ["λ_$(i)_rad" for i ∈ 1:462]
+    names = ["λ_$(i)_rad" for i ∈ 1:n_λs]
     df = DataFrame(data', names)  # include float64 cast
 
     # generate Σrad now for efficiency
     df[!, "Σrad"] = vec(sum(data, dims=1))
 
 
-    df[!, "times"] = times_final
+    if pathToTimes != ""
+        times = getTimes(pathToTimes)
+        times_array = vcat([times' for _ ∈ 1:ncols]...)
+        times_final = reshape(times_array, ncols*nrows)
+        df[!, "times"] = times_final
+    end
+
 
     df[!, "row_index"] = rows
     return df
