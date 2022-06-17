@@ -7,11 +7,14 @@ using Rotations
 using StaticArrays
 using DataInterpolations
 using Statistics
+using Images
+using Plots
+
 
 include("HSI.jl")
 include("IMU.jl")
-
-
+include("satplot.jl")
+include("HSI2RGB.jl")
 
 export getHdrFile
 export getTimes
@@ -28,6 +31,12 @@ export imagecoordsFlipped
 export Coords!
 export ilat_ilon!
 export georectify
+
+export getBackgroundTile
+export plot_background
+
+export Spec_2_RGB
+export HSI_2_RGB
 
 
 
@@ -824,6 +833,8 @@ function georectify(bilpath::String,
 
     return res
 end
+
+
 
 
 end
