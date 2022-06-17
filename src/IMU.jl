@@ -57,10 +57,15 @@ function getIMUdata(pathToLCF::String)
 
     # correct heading for meridian deviation as in Muller paper
     utm_zones = range(-180, stop=180, step=6)  # utm zones are every 6 degrees
-    df.heading_correct = df.heading  .- atan.(tand.(df.longitude .- (utm_zones[df.zone] .+ 3.0)).*sind.(df.latitude)) # need to check which ± should be used
-    df.heading_correct = df.heading
 
-    df.roll .= -df.roll
+
+    Δ = atan.(tand.(df.longitude .- (utm_zones[df.zone] .+ 3.0)).*sind.(df.latitude))
+    df.heading_correct = df.heading  .- Δ  # <-- this is what's used in the paper by Muller
+    # df.heading_correct = df.heading
+
+
+    # final assignments
+    df.roll .= -df.roll  # <-- due to opposite convention used by GPS
     df.pitch .= df.pitch
     df.heading_correct .= df.heading_correct
 

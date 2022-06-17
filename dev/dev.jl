@@ -52,8 +52,7 @@ RGB_final = RGB.(sRGB[1, :], sRGB[2,:], sRGB[3,:])
 
 rgb_tiff, longitudes, latitudes = getBackgroundTile(location_data["scotty"]["w"],
                                                     location_data["scotty"]["n"],
-                                                    location_data["scotty"]["e"],
-                                                    location_data["scotty"]["s"],
+                                                    location_data["scotty"]["e"], location_data["scotty"]["s"],
                                                     "scotty_background"
                                                     )
 
@@ -61,7 +60,7 @@ rgb_tiff, longitudes, latitudes = getBackgroundTile(location_data["scotty"]["w"]
 p1 = plot_background(rgb_tiff,
                      longitudes,
                      latitudes;
-                     size=(1200, 800),
+                     size=(3*600, 3*400),
                      xlim=(location_data["scotty"]["w"],location_data["scotty"]["e"]),
                      ylim=(location_data["scotty"]["s"],location_data["scotty"]["n"]),
                      left_margin = 10*Plots.mm,
@@ -69,11 +68,9 @@ p1 = plot_background(rgb_tiff,
                      tickfontsize=13,
                      tick_direction=:out,
                      )
-# plot!(df.longitude, df.latitude, seriestype=:scatter, zcolor = df[!, "λ_200_rad"], c=:vik, alpha=0.7, ms = 1, markerstrokewidth=0, label="" )
 
 plot!(df.longitude, df.latitude, seriestype=:scatter, color = RGB_final, alpha=0.7, ms = 1, markerstrokewidth=0, label="")
 
-# savefig("./test.png")
- 
+savefig("./no_correction.png")
 
 

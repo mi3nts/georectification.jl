@@ -145,11 +145,3 @@ end
 
 
 
-# for now this is necessary for dealing with the calibration files
-
-struct HSI{S<:AbstractArray, T<:Dict, U<:AbstractArray}
-    data::S
-    info::T
-    times::U
-end
-
