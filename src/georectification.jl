@@ -5,7 +5,8 @@ using DataFrames
 using Geodesy
 using Rotations
 using StaticArrays
-using DataInterpolations
+# using DataInterpolations
+using Interpolations
 using Statistics
 using Images
 using Plots
