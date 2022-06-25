@@ -5,12 +5,12 @@ using DataFrames
 using Geodesy
 using Rotations
 using StaticArrays
-# using DataInterpolations
-using Interpolations
+using DataInterpolations
+# using Interpolations
 using Statistics
 using Images
 using Plots
-
+using Dates
 
 include("HSI.jl")
 include("IMU.jl")
@@ -21,9 +21,13 @@ export getHdrFile
 export getTimes
 export readToDataFrame
 export getHdrFile
+
+export leap_count
+export gpsToUTC
 export getIMUdata
 export Rotate
 export masterLCF
+
 export generateReflectance!
 export generateDerivedMetrics!
 export getHSIFlightData
@@ -669,8 +673,10 @@ function Coords!(df::DataFrame,
     ## the row index is effectively the y-value in image coordinates so
     ## we may have these swapped... 
     pixelCoords = Array{Float64}(undef, 3, lines, samples)  # val, row, col
-#    pixelRes = Array{Float64}(undef, lines, samples) # estimates of pixel resolution
+    # pixelRes = Array{Float64}(undef, lines, samples) # estimates of pixel resolution
     pixelTimes = Array{Float64}(undef, lines, samples) # time each frame was captured
+    # pixelTimes = Array{DateTime}(undef, lines, samples) # time each frame was captured
+
     viewingGeom = Array{Float64}(undef, 3, lines, samples) # store roll, pitch, yaw
 
     # compute pixel locations in
@@ -698,13 +704,12 @@ function Coords!(df::DataFrame,
         @inbounds pixelCoords[3, i, :] .= [lla.alt for lla ∈ rs_object_lla]
 
 
-        @inbounds pixelTimes[i, :] .= [frame.times + start_time for i ∈ 1:N]
-
+        @inbounds pixelTimes[i, :] .= [frame.times for i ∈ 1:N]
         @inbounds viewingGeom[1, i, :] .= [frame.roll for i∈1:N]
         @inbounds viewingGeom[2, i, :] .= [frame.pitch for i∈1:N]
         @inbounds viewingGeom[3, i, :] .= [frame.heading for i∈1:N]
 
-        # Turn of resolution for speed up
+        # Turn off resolution for speed up
 
         # compute distance between pixels in a sample
         # Δxs_sample = [rs_object_utm[1,j]-rs_object_utm[1, j-1] for j∈2:N]
@@ -737,6 +742,8 @@ function Coords!(df::DataFrame,
     df[!, :roll] = vec(viewgeom[1,:])
     df[!, :pitch] = vec(viewgeom[2,:])
     df[!, :heading] = vec(viewgeom[3,:])
+
+    return start_time
 end
 
 
@@ -808,12 +815,14 @@ function georectify(bilpath::String,
 
     println("\tgenerating derived metrics")
     generateDerivedMetrics!(df, λs)
-    Coords!(df,
-            lcfpath,
-            z_ground,
-            θ_view,
-            isFlipped
-            )
+
+    start_time = Coords!(df,
+                         lcfpath,
+                         z_ground,
+                         θ_view,
+                         isFlipped
+                         )
+
 
     println("\tgenerating ilat and ilon")
     ilat_ilon!(df, ndigits)
@@ -823,6 +832,23 @@ function georectify(bilpath::String,
 
     println("\trecombining via average")
     res = combine(gdf, Not([:ilat, :ilon]) .=> mean; renamecols=false)
+
+
+    res.utc_times = Array{DateTime}(undef, size(res, 1)) # time each frame was captured
+
+    for i ∈ 1:size(res,1)
+        sec = round(res.pixeltimes[i])
+        ms = (res.pixeltimes[i] - sec)
+        sec = Second(Int(sec))
+        ms = Millisecond(Int(round(1000*ms, digits=0)))
+        Δt = sec + ms
+
+        res.utc_times[i] = start_time + Δt
+    end
+
+    # add new column with utc_time
+
+
 
     # hocus pocus for freeing locked memory
     # df = nothing
