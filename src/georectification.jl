@@ -557,7 +557,7 @@ end
 """
     getHSIFlightData(df::DataFrame, lcf_path::String)
 
-Given IMU data found at `lcf_path`, compute the position and orientation of the Aerial Vehicle at time of capture for each pixel.
+Given IMU data found at `lcf_path`, compute the position and orientation of the Aerial Vehicle at time of capture for each pixel. Return's a dataframe and the corresponding start time of the acquisition reported in UTC.
 """
 function getHSIFlightData(df::DataFrame, lcf_path::String)
     imu_df, start_time = getIMUdata(lcf_path)  # note start time is in unix epoch time
@@ -656,6 +656,7 @@ Compute the ground coordinates for each pixel of an HSI `df`. Update the origina
 - roll
 - pitch
 - heading
+and return `start_time` in UTC corresponding to `pixeltime = 0.0`.
 """
 function Coords!(df::DataFrame,
                 lcf_path::String,
@@ -788,7 +789,7 @@ end
                ndigits::Int,
                )
 
-Generate a georectified dataframe including radiance, reflectance, derived metrics, and position data. 
+Generate a georectified dataframe including radiance, reflectance, derived metrics, `utc_time`, and position data.
 """
 function georectify(bilpath::String,
                     bilhdrpath::String,

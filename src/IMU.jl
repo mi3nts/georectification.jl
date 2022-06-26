@@ -87,7 +87,7 @@ gpsToUTC(1290187878.260, 2019)
 """
     getIMUdata(pathToLCF::String)
 
-Read a .lcf file and return a DataFrame `df` with corresponding IMU data and the value `start_time` indicating the start time of the clock in linux epoch time.
+Read a .lcf file and return a DataFrame `df` with corresponding IMU data and the value `start_time` indicating the start time of the clock in linux epoch time. `start_time` is reported as UTC.
 
 # Data Returned
 - **time:** system time in seconds starting at zero
@@ -189,7 +189,7 @@ T_n_E = @SMatrix [0 1 0; 1 0 0; 0 0 -1 ]  # matrix to convert navigation system 
 """
     masterLCF(folder::String)
 
-Loop through all .lcf files in `folder` and return a DataFrame containing the start and end times for each datacube aquisition.
+Loop through all .lcf files in `folder` and return a DataFrame containing the start and end times for each datacube aquisition. Start and end times are reported as UTC times.
 
 # Fields
 - **paths**: Paths to each HSI directory
