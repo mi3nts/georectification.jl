@@ -197,12 +197,12 @@ Loop through all .lcf files in `folder` and return a DataFrame containing the st
 - **tstart**: starting time for each datacube acquisition
 - **tend**: ending time for each datacube acquisition
 """
-function masterLCF(folder::String)
+function masterLCF(folder::String, basename::String)
     lcf_paths = []
     lcf_files = []
     for (root, dirs, files) ∈ walkdir(folder, topdown=true)
         for file ∈ files
-            if endswith(file, ".lcf")
+            if endswith(file, ".lcf") && occursin(basename, split(file, "-")[1])
                 push!(lcf_files, joinpath(root, file))
                 push!(lcf_paths, root)
             end
@@ -245,6 +245,10 @@ function masterLCF(folder::String)
     master_lcf_df."files" = lcf_files
     master_lcf_df."tstart" = t_start
     master_lcf_df."tend" = t_end
+
+
+    sort!(master_lcf_df, :tstart)
+
 
     CSV.write(joinpath(folder, "master_lcf.csv"), master_lcf_df)
 

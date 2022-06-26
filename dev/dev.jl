@@ -40,7 +40,7 @@ df = georectify(testBilPath,
                 6
                 )
 
-
+df.utc_times[1]
 
 cols = ["λ_$(i)" for i ∈ 1:length(wavelengths)]
 refHSI = Array(df[:, cols])
