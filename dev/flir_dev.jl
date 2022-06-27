@@ -1,11 +1,14 @@
+using georectification
 using Images, FileIO
 using Dates, TimeZones
 using Plots
-using ImageMagick: magickinfo
 using DataFrames, CSV
 using ProgressMeter
 using BenchmarkTools
 
+
+
+include("../../mintsRobotTeam/config.jl")
 
 # 20201123_113254_869_IR.TIFF
 
@@ -29,143 +32,19 @@ p1 = plot(jpg, title="visible", aspect_ratio=:equal)
 p2 = heatmap(channelview(tiff), title="thermal", aspect_ratio=:equal, yflip=true)
 plot(p1, p2)
 
-# get all metadata from jpg file
-p = magickinfo(jpgPath, magickinfo(jpgPath))
-q = magickinfo(tiffPath, magickinfo(tiffPath))
+
+tiff_temp = TIFFtoTemp(tiff)
+
+p1 = plot(jpg, title="visible", aspect_ratio=:equal)
+p2 = heatmap(tiff_temp, title="thermal", aspect_ratio=:equal, yflip=true)
+plot(p1, p2)
 
 
-
-# see duo-pro-r_manual.pdf page 39
-"""
-    TIFFtoTemp(img)
-
-Convert a FLIR thermal image to temperature units in °C
-"""
-function TIFFtoTemp(img::AbstractArray)
-    #NOTE: Images.jl interprets Uint16 values to N0f16 for us automatically
-    # this means values are scaled to 0-1
-    return rawview(channelview(img)) .* 0.04 .- 273.15
-end
-
-
-
-"""
-    function exiftool(imgpath)
-
-Run the command line tool `exiftool` on the image at `imgpath`. Returns a dictionary of metadata from the image file. 
-"""
-function exiftool(imgpath)
-    cmd = `exiftool $(imgpath)`
-    txt = read(cmd, String)
-
-
-    ret_dict = Dict{String, String}()
-    for line ∈ split(txt, "\n")
-        splitline = split(line, ":")
-        if size(splitline, 1) >= 2
-            key = splitline[1]
-            val = join(splitline[2:end], ":")
-
-            # remove whitespace
-            key = strip(key)
-            val = strip(val)
-
-            # add to dict
-            ret_dict[key] = val
-        end
-    end
-
-    return ret_dict
-end
-
-
-
-"""
-    function getExifDate(dict)
-
-Given a dictionary `dict` returned from `exiftool`, return the correct time field as a `DateTime` object.
-"""
-function getExifDate(dict::Dict)
-    date = dict["Date/Time Original"]
-    res = DateTime(date, "Y:m:d H:M:S.s")
-end
-
-
-
-
-"""
-    function getExifDate(tiffpath::String)
-
-Dispatch that returns the time of creation of a FLIR tiff file using `exiftool`
-"""
-function getExifDate(tiffpath::String)
-    getExifDate(exiftool(tiffpath))
-end
 
 D = exiftool(tiffPath)
 date = getExifDate(D)
 date2 = getExifDate(tiffPath)
 
-
-"""
-    function getFlirTimes(dirPath, tz)
-
-Given directory `dirPath`, generate a list of all FLIR files and their associated time of capture. Assume the time used is in timezone `tz`. See the [TimeZones.jl docs](https://juliatime.github.io/TimeZones.jl/dev/) for more information.
-"""
-function getFlirTimes(dirPath, tz)
-    flist = filter(x->endswith(x, ".TIFF"), readdir(dirPath))
-    basenames = [join(split(f, "_")[1:end-1], "_") for f ∈ flist]
-    unique!(basenames)
-
-    tiff_end = "_IR.TIFF"
-    jpg_end = "_8b.JPG"
-
-
-    out_df = DataFrame()
-
-    out_df.basename = basenames
-    out_df.tiffpath = [joinpath(dirPath, b * tiff_end) for b ∈ basenames]
-    out_df.jpgpath = [joinpath(dirPath, b * jpg_end) for b ∈ basenames]
-
-    # preallocate times
-    out_df.times_central = Array{DateTime}(undef, size(out_df, 1))
-    out_df.basename_times_central = Array{DateTime}(undef, size(out_df, 1))
-    # generate UTC versions from the Central Standard Time. Note: the conversion depends on whether or not we're in daylight savings time
-    out_df.times_utc = Array{DateTime}(undef, size(out_df, 1))
-    out_df.times_basename_utc = Array{DateTime}(undef, size(out_df, 1))
-
-
-
-
-    # process time in parallel
-    p = Progress(size(out_df, 1); dt=1, desc="Getting image capture DateTimes...")
-    Threads.@threads for i ∈ 1:size(out_df,1)
-        out_df.times_central[i] = getExifDate(out_df.tiffpath[i])
-        out_df.basename_times_central[i] = DateTime(out_df.basename[i], "YYYYmmdd_HHMMSS_sss")
-
-        time_central = out_df.times_central[i]
-        time_basename_central = out_df.basename_times_central[i]
-
-        # make into zoned time and then convert to utc and get back a regular datetime
-        out_df.times_utc[i] = DateTime(ZonedDateTime(time_central, tz), UTC)
-        out_df.times_basename_utc[i] = DateTime(ZonedDateTime(time_basename_central, tz), UTC)
-        next!(p)
-    end
-
-    return out_df
-end
-
-
-
-"""
-    function getFlirTimes(dirPath)
-
-Calls `getFlirTimes` on `dirPath` with the timezone assumed to be US/Central
-"""
-function getFlirTimes(dirPath)
-    tz_central = TimeZone("US/Central", TimeZones.Class(:LEGACY))
-    getFlirTimes(dirPath, tz_central)
-end
 
 
 df = getFlirTimes(basepath)
@@ -178,39 +57,21 @@ df.times_utc[1]
 # @btime getFlirTimes(basepath)
 
 
-"""
-    function generateFlirSummaries(basepath::String)
-
-Loop through directories in `basepath` and generate dataframes with capture times for all FLIR images in each folder.
-"""
-function generateFlirSummaries(basepath::String)
-    dirlist = filter(x -> !endswith(x, ".csv"), readdir(basepath))
-    for dir ∈ dirlist
-        if isdir(joinpath(basepath, dir))
-            println("working on $(dir)...")
-            try
-                df = getFlirTimes(joinpath(basepath, dir))
-                CSV.write(joinpath(basepath, dir*".csv"), df)
-            catch e
-                println("Didn't work...\n")
-                println(e)
-            end
-        end
-    end
-end
-
-
 flirpath = "/media/john/HSDATA/FLIR"
-generateFlirSummaries(flirpath)
+# generateFlirSummaries(flirpath)
 
-test_csv = joinpath(flirpath, "20201123_112658.csv")
+
+
+# test_csv = joinpath(flirpath, "20201123_112658.csv")
+test_csv = joinpath(flirpath, "20201209_110416.csv")
 df = CSV.File(test_csv) |> DataFrame
 
-df.times[end]
+names(df)
+df.times_utc[1]
+df.times_utc[end]
 
 
 
-using georectification
 df_dye1 = masterLCF("/media/john/HSDATA/raw/12-09", "Dye_1")
 df_dye2 = masterLCF("/media/john/HSDATA/raw/12-09", "Dye_2")
 df_nodye1 = masterLCF("/media/john/HSDATA/raw/12-09", "NoDye_1")
@@ -221,65 +82,104 @@ size(df_dye2)
 size(df_nodye1)
 size(df_nodye2)
 
-df_nodye1.tstart[1]
-df_nodye1.tend[end]
+println("FLIR times: $(df.times_utc[1]) to $(df.times_utc[end])")
+println("NoDye_1 times: $(df_nodye1.tstart[1]) to $(df_nodye1.tend[end])")
+println("NoDye_2 times: $(df_nodye2.tstart[1]) to $(df_nodye2.tend[end])")
+println("Dye_1 times: $(df_dye1.tstart[1]) to $(df_dye1.tend[end])")
+println("Dye_2 times: $(df_dye2.tstart[1]) to $(df_dye2.tend[end])")
+
+size(df)
+size(df_nodye2)
 
 
-df.times[1]
-df.times[end]
 
-"""
-    DuringFlight(thermalPath::String, df::DataFrame)
+df_sub = DuringFlight(df, df_nodye2)
 
-Check each row of the dataframe (coming from masterLCF() in IMU.jl) and determine if the FLIR image was taken during the HSI acquisition.
-"""
-function DuringFlight(thermalPath::String, df::DataFrame)
-    t, date_time = FLIRtime(thermalPath)
-    for row ∈ eachrow(df)
-        if row.tstart <= t && t <= row.tend
-            for f ∈ readdir(row.paths)
-                if endswith(f, ".lcf")
-                    return true, joinpath(row.paths, f), row.paths
-                end
-            end
-        end
-    end
-    return false, "", ""
+names(df_sub)
+names(df_nodye2)
+
+matchLCFfile!(df_sub, df_nodye2)
+
+df_sub.tiffpath[1]
+
+df_sub.lcf_path[1:20]
+
+df_nodye2[1:10, [:tstart, :tend]]
+df_nodye2.tend[1]
+df_nodye2.tstart[2]
+
+
+df_sub.tiffpath[1]
+
+res = exiftool(df_sub.tiffpath[1])
+for key ∈ keys(res)
+    println(key)
 end
 
+res["Yaw"]
+res["Roll"]
+res["Pitch"]
+
+res["File Modification Date/Time"]
+res["File Access Date/Time"]
+res["File Inode Change Date/Time"]
+
+df_sub.times_utc[1]
+df_sub.times_basename_utc[1]
+df_nodye2.tstart[1]
+
+
+img_vis, img_therm, visCoords, visTimes, thermCoords, thermTimes = georectifyFLIR(df_sub.tiffpath[1],
+                                                                                  df_sub.jpgpath[1],
+                                                                                  df_sub.lcf_path[1],
+                                                                                  df_sub.times_basename_utc[1],
+                                                                                  location_data["scotty"]["z"],
+                                                                                  12.5,
+                                                                                  )
+
+# @btime georectifyFLIR(df_sub.tiffpath[1],
+#                       df_sub.jpgpath[1],
+#                       df_sub.lcf_path[1],
+#                       df_sub.times_utc[1],
+#                       location_data["scotty"]["z"],
+#                       )
 
 
 
-function getMasterFlightPath(basepath)
-    # loop through all HSI folders to generate dataframe of combined LCF values
-end
+names(df_sub)
+
+rgb_tiff, longitudes, latitudes = getBackgroundTile(location_data["scotty"]["w"],
+                                                    location_data["scotty"]["n"],
+                                                    location_data["scotty"]["e"], location_data["scotty"]["s"],
+                                                    "scotty_background",
+                                                    )
 
 
-
-function wasDuringFlight(time, flightPath_df)
-    # check if a given time occurred during the flight (we need to filter for ground photos)
-end
-
-
-function duringFlight(flir_df, flightPath_df)
-    # given the data_frame with image times, return the subset which occur during the flight
-end
-
-function getPositionOrientation(flir_df, flightPath_df)
-    # update the flir_df with interpolated position/orientation data from flightPath_df
-end
+p1 = plot_background(rgb_tiff,
+                     longitudes,
+                     latitudes;
+                     size=(3*600, 3*400),
+                     xlim=(location_data["scotty"]["w"],location_data["scotty"]["e"]),
+                     ylim=(location_data["scotty"]["s"],location_data["scotty"]["n"]),
+                     left_margin = 10*Plots.mm,
+                     guidefontsize=18,
+                     tickfontsize=13,
+                     tick_direction=:out,
+                     )
 
 
-getImageTime(tiffPath)
-FLIRtime(tiffPath)
-tiff_temp = TIFFtoTemp(tiff)
+size(thermCoords)  # lat, lon, alt
+size(img_vis)
 
-p1 = plot(jpg, title="visible", aspect_ratio=:equal)
-p2 = heatmap(tiff_temp, title="thermal", aspect_ratio=:equal, yflip=true)
-plot(p1, p2)
+plot!(p1, visCoords[2,1:10:end,1:10:end], visCoords[1,1:10:end,1:10:end], seriestype=:scatter, color = img_vis[1:10:end,1:10:end], alpha=0.7, ms = 1, markerstrokewidth=0, label="")
+plot!(p1, thermCoords[2,:,:], thermCoords[1, :, :], seriestype=:scatter,  zcolor=img_therm, clims=(0,30), ms=1, markerstrokewidth=0, label="")
 
+savefig("utc_time_basename__3π_4_heading_pitchAdjust_12.5_deg.png")
+# savefig("utc_time_basename__3π_4_heading.png")
+# savefig("utc_time__3π_4_heading.png")
+# savefig("utc_time__π_4_heading.png")
+# savefig("utc_time__π_2_heading.png")
+# savefig("utc_time.png")
 
-
-
-
+display(p1)
 

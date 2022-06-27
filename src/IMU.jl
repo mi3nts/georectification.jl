@@ -202,7 +202,10 @@ function masterLCF(folder::String, basename::String)
     lcf_files = []
     for (root, dirs, files) ∈ walkdir(folder, topdown=true)
         for file ∈ files
-            if endswith(file, ".lcf") && occursin(basename, split(file, "-")[1])
+            ffull = joinpath(root, file)
+            namebase = split(split(ffull, "/")[end-1], "-")[1]
+
+            if endswith(file, ".lcf") && basename == namebase
                 push!(lcf_files, joinpath(root, file))
                 push!(lcf_paths, root)
             end

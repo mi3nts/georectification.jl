@@ -11,11 +11,13 @@ using Statistics
 using Images
 using Plots
 using Dates
+using ProgressMeter
 
 include("HSI.jl")
 include("IMU.jl")
 include("satplot.jl")
 include("HSI2RGB.jl")
+include("FLIR.jl")
 
 export getHdrFile
 export getTimes
@@ -42,6 +44,16 @@ export plot_background
 
 export Spec_2_RGB
 export HSI_2_RGB
+
+# FLIR stuff
+export TIFFtoTemp
+export exiftool
+export getExifDate
+export getFlirTimes
+export generateFlirSummaries
+export DuringFlight
+export matchLCFfile!
+export georectifyFLIR
 
 
 
@@ -862,6 +874,106 @@ function georectify(bilpath::String,
     return res
 end
 
+
+
+
+
+
+
+"""
+    function georectifyFLIR(thermal_path::String, visible_path::String, lcf_path::String, capture_time::DateTime, z_ground::Float64)
+"""
+function georectifyFLIR(thermal_path::String, visible_path::String,  lcf_path::String, capture_time::DateTime, z_ground::Float64, pitch_adjustment::Float64)
+    # df is dataframe with start and end times for each lcf file
+
+    # read in the image
+    img_vis = load(visible_path)
+    img_therm = load(thermal_path)
+    img_therm = TIFFtoTemp(img_therm) # convert to temperature units
+
+    Nx_vis, Ny_vis = size(img_vis)
+    Nx_therm, Ny_therm = size(img_therm)
+
+    θx_therm = 20
+    θy_therm = 25
+    θx_vis = 45
+    θy_vis = 56
+
+    imu_df, start_time = getIMUdata(lcf_path)
+
+    t_cap = Dates.value(capture_time - start_time)/1000
+
+    # interpolate the lcf data to match the FLIR time
+    α_interp = CubicSpline(imu_df.heading_correct, imu_df.time)
+    β_interp = CubicSpline(imu_df.pitch, imu_df.time)
+    γ_interp = CubicSpline(imu_df.roll, imu_df.time)
+    x_interp = CubicSpline(imu_df.x, imu_df.time)
+    y_interp = CubicSpline(imu_df.y, imu_df.time)
+    z_interp = CubicSpline(imu_df.z, imu_df.time)
+
+    α = α_interp(t_cap)
+    β = β_interp(t_cap)
+    γ = γ_interp(t_cap)
+    x = x_interp(t_cap)
+    y = y_interp(t_cap)
+    z = z_interp(t_cap)
+
+    println("Yaw: $(α*180/π)")
+    println("Pitch: $(β*180/π)")
+    println("Roll: $(γ*180/π)")
+
+
+    visCoords = Array{Float64}(undef, 3, Nx_vis, Ny_vis)  # val, row, col
+    visTimes = Array{Float64}(undef, Nx_vis, Ny_vis)
+
+    thermCoords = Array{Float64}(undef, 3, Nx_therm, Ny_therm)
+    thermTimes = Array{Float64}(undef, Nx_therm, Ny_therm)
+
+
+    f_vis = ((Ny_vis-1)/2)/tand(θy_vis/2)
+    f_therm = ((Ny_therm-1)/2)/tand(θy_therm/2)
+
+    # i,j ordering: 43.412 s with 13.36 GiB allocations
+    # j,i ordering: 42.117 s with 13.35 GiB allocations
+
+
+
+
+    s = (z-z_ground)/f_vis  # scale factor
+    # loop through pixels and apply the transformation
+    # @showprogress 1 "Georectifying the visible image..." for i∈1:Nx_vis, j∈1:Ny_vis
+    @showprogress 1 "Georectifying the visible image..." for j∈1:Ny_vis, i∈1:Nx_vis
+
+        # NOTE: we need an extra rotation since FLIR is on the side of the HSI
+        # rs_utm = [x; y; z] .+ s .*Rotate(-π,0,0) * T_n_E*Rotate(α, β, γ)*[(Nx_vis-1)/2 - (i-1); -(Ny_vis-1)/2 + (j-1); f_vis]
+        rs_utm = [x; y; z] .+ s .*Rotate(3π/4,pitch_adjustment*π/180,0) * T_n_E*Rotate(α, β, γ)*[(Nx_vis-1)/2 - (i-1); -(Ny_vis-1)/2 + (j-1); f_vis]
+
+        rs_object_lla = LLAfromUTMZ(wgs84)(UTMZ(rs_utm..., imu_df.zone[1], imu_df.isnorth[1]))
+
+        @inbounds visCoords[1, i, j] = rs_object_lla.lat
+        @inbounds visCoords[2, i, j] = rs_object_lla.lon
+        @inbounds visCoords[3, i, j] = rs_object_lla.alt
+        @inbounds visTimes[i,j] = t_cap
+    end
+
+
+    s = (z-z_ground)/f_therm  # scale factor
+    # @showprogress 1 "Georectifying the thermal image..." for i∈1:Nx_therm, j∈1:Ny_therm
+    @showprogress 1 "Georectifying the thermal image..." for j∈1:Ny_therm, i∈1:Nx_therm
+        # NOTE: we need an extra rotation since FLIR is on the side of the HSI
+        # rs_utm = [x; y; z] .+ s .* Rotate(-π,0,0) * T_n_E*Rotate(α, β, γ)*[(Nx_therm-1)/2 - (i-1); -(Ny_therm-1)/2 + (j-1); f_therm]
+        rs_utm = [x; y; z] .+ s .*Rotate(3π/4,pitch_adjustment*π/180,0) * T_n_E*Rotate(α, β, γ)*[(Nx_therm-1)/2 - (i-1); -(Ny_therm-1)/2 + (j-1); f_therm]
+
+        rs_object_lla = LLAfromUTMZ(wgs84)(UTMZ(rs_utm..., imu_df.zone[1], imu_df.isnorth[1]))
+
+        @inbounds thermCoords[1, i, j] = rs_object_lla.lat
+        @inbounds thermCoords[2, i, j] = rs_object_lla.lon
+        @inbounds thermCoords[3, i, j] = rs_object_lla.alt
+        @inbounds thermTimes[i, j] = t_cap
+    end
+
+    return img_vis, img_therm, visCoords, visTimes, thermCoords, thermTimes
+end
 
 
 

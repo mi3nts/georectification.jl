@@ -27,3 +27,21 @@ typeof(latitudes)
 
 plot_background(rgb_tiff, longitudes, latitudes)
 
+
+rgb_tiff
+
+
+f(x, a) = begin
+    0.0
+end
+xs = collect(0.1:0.05:2.0)
+as = collect(0.2:0.1:2.0)
+x_grid = [x for x = xs for y = as]
+a_grid = [y for x = xs for y = as]
+plot(x_grid, a_grid, f.(x_grid, a_grid), st = :surface xlabel = "longer xlabel", ylabel = "longer ylabel", zlabel = "longer zlabel")
+
+plotattr(:Plot)
+
+# we want a 3d plot with the bottom being the basemap image
+# revisit this later in Makie http://juliaplots.org/MakieReferenceImages/gallery/index.html
+# also: http://juliaplots.org/MakieReferenceImages/gallery//surface_with_image/index.html
