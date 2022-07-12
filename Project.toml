@@ -25,6 +25,7 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 Trapz = "592b5752-818d-11e9-1e9a-2b8ca4a44cd1"
 
 [compat]
+Interpolations = "0.14"
 julia = "1.7"
 
 [extras]
