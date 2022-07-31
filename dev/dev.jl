@@ -42,6 +42,8 @@ df = georectify(testBilPath,
                 6
                 )
 
+println("finished!")
+
 # df.utc_times[1]
 
 # cols = ["λ_$(i)" for i ∈ 1:length(wavelengths)]
