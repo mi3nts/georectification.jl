@@ -4,6 +4,9 @@ using Plots
 using Interpolations
 using Images
 
+
+println("Setting up the paths")
+
 # set up paths to test files
 testPath = "/media/john/HSDATA/raw/11-23/Scotty_1-1"
 testBilPath = joinpath(testPath, "Scotty_1_Pika_XC2_1-radiance.bil")
