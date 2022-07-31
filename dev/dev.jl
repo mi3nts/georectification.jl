@@ -22,9 +22,8 @@ include("../../mintsRobotTeam/config.jl")
 calibrationPath = "../../mintsRobotTeam/calibration/"
 
 
-df = readToDataFrame(testBilPath, testBilHdrPath, testTimesPath)
-
-generateReflectance!(df, testSpecPath, testSpecHdrPath, calibrationPath, wavelengths)
+# df = readToDataFrame(testBilPath, testBilHdrPath, testTimesPath)
+# generateReflectance!(df, testSpecPath, testSpecHdrPath, calibrationPath, wavelengths)
 
 
 println("attempting georectification")
