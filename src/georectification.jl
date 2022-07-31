@@ -107,7 +107,7 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
 
     # calculate correction
     #----------------------------------------------------------------------
-    correction = π .* adjusted_gain .* frame  # need to figure out what this π is for
+    correction = π .* adjusted_gain .* frame  # need to figure out what this π is for... I suspect this is from the cosine corrector.
     clamp!(correction, 0, typemax(eltype(frame)))
 
 
@@ -119,11 +119,18 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
 
     # setup outgoing cube
     # Note: R = π(sensor radiance / downwelling irradiance) as per spectronon docs
+    # http://docs.resonon.com/spectronon/SpectrononUserManual/html/plugin_docs.html#reflectance-from-radiance-data-and-downwelling-irradiance-spectrum
     #----------------------------------------------------------------------
     npixels = size(df)[1]
     for i ∈ 1:462
         @inbounds df[!, "λ_$(i)"] = clamp.(π .* df[!, "λ_$(i)_rad"] ./ adjustedSpec[i], 0.0, typemax(Float64))
     end
+
+    # Also copy over the "correction" values i.e. the calibrated spectrum from the downwelling irradiance spectrometer with cosine corrector
+    for i ∈ 1:nλ_spec
+        df[!, "λ_$(i)_downwelling"] = correction[i] .* ones(nrow(df))
+    end
+
 end
 
 

@@ -40,37 +40,37 @@ df = georectify(testBilPath,
                 6
                 )
 
-df.utc_times[1]
+# df.utc_times[1]
 
-cols = ["λ_$(i)" for i ∈ 1:length(wavelengths)]
-refHSI = Array(df[:, cols])
-
-
-sRGB = HSI_2_RGB(wavelengths, refHSI, 65)
-
-RGB_final = RGB.(sRGB[1, :], sRGB[2,:], sRGB[3,:])
-
-rgb_tiff, longitudes, latitudes = getBackgroundTile(location_data["scotty"]["w"],
-                                                    location_data["scotty"]["n"],
-                                                    location_data["scotty"]["e"], location_data["scotty"]["s"],
-                                                    "scotty_background"
-                                                    )
+# cols = ["λ_$(i)" for i ∈ 1:length(wavelengths)]
+# refHSI = Array(df[:, cols])
 
 
-p1 = plot_background(rgb_tiff,
-                     longitudes,
-                     latitudes;
-                     size=(3*600, 3*400),
-                     xlim=(location_data["scotty"]["w"],location_data["scotty"]["e"]),
-                     ylim=(location_data["scotty"]["s"],location_data["scotty"]["n"]),
-                     left_margin = 10*Plots.mm,
-                     guidefontsize=18,
-                     tickfontsize=13,
-                     tick_direction=:out,
-                     )
+# sRGB = HSI_2_RGB(wavelengths, refHSI, 65)
 
-plot!(df.longitude, df.latitude, seriestype=:scatter, color = RGB_final, alpha=0.7, ms = 1, markerstrokewidth=0, label="")
+# RGB_final = RGB.(sRGB[1, :], sRGB[2,:], sRGB[3,:])
 
-savefig("./no_correction.png")
+# rgb_tiff, longitudes, latitudes = getBackgroundTile(location_data["scotty"]["w"],
+#                                                     location_data["scotty"]["n"],
+#                                                     location_data["scotty"]["e"], location_data["scotty"]["s"],
+#                                                     "scotty_background"
+#                                                     )
+
+
+# p1 = plot_background(rgb_tiff,
+#                      longitudes,
+#                      latitudes;
+#                      size=(3*600, 3*400),
+#                      xlim=(location_data["scotty"]["w"],location_data["scotty"]["e"]),
+#                      ylim=(location_data["scotty"]["s"],location_data["scotty"]["n"]),
+#                      left_margin = 10*Plots.mm,
+#                      guidefontsize=18,
+#                      tickfontsize=13,
+#                      tick_direction=:out,
+#                      )
+
+# plot!(df.longitude, df.latitude, seriestype=:scatter, color = RGB_final, alpha=0.7, ms = 1, markerstrokewidth=0, label="")
+
+# savefig("./no_correction.png")
 
 
