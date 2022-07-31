@@ -42,6 +42,11 @@ df = georectify(testBilPath,
                 6
                 )
 
+for name ∈ names(df)
+    println(name)
+end
+
+
 println("finished!")
 
 # df.utc_times[1]
