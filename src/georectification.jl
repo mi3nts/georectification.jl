@@ -133,7 +133,7 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
     #     df[!, "λ_$(i)_downwelling"] = correction[i] .* ones(nrow(df))
     # end
 
-    return  correction
+    return  DataFrame(correction',["λ_downwelling_$(i)" for i ∈ 1:nλ_spec])
 end
 
 

@@ -28,26 +28,31 @@ calibrationPath = "../../mintsRobotTeam/calibration/"
 
 println("attempting georectification")
 
-df = georectify(testBilPath,
-                testBilHdrPath,
-                testTimesPath,
-                testSpecPath,
-                testSpecHdrPath,
-                calibrationPath,
-                lcf_path,
-                wavelengths,
-                location_data["scotty"]["z"],
-                θ_view,
-                true,
-                6
-                )
-
-for name ∈ names(df)
-    println(name)
-end
+df, irrad_df = georectify(testBilPath,
+                          testBilHdrPath,
+                          testTimesPath,
+                          testSpecPath,
+                          testSpecHdrPath,
+                          calibrationPath,
+                          lcf_path,
+                          wavelengths,
+                          location_data["scotty"]["z"],
+                          θ_view,
+                          true,
+                          6
+                          )
 
 
 println("finished!")
+
+
+typeof(irrad_df)
+
+λmat = Array(irrad_df)
+
+
+plot(λmat', label="")
+
 
 # df.utc_times[1]
 
