@@ -65,6 +65,8 @@ Given a dataframe `df` containing the radiance data, generate reflectance data u
 
 # NOTE
 The conversion assumes a Lambertian surface. This is clearly *not* the case for water that isn't perfectly still.
+
+# NOTE Also add the corrected radiance spectrum values as additional features.
 """
 function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::String, calibrationPath::String, wavelengths::Array{Float64, 1})
 
