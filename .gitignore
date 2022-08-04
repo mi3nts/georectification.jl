@@ -1,2 +1,4 @@
 /Manifest.toml
 /docs/build/
+*.png
+/dev/animation_data

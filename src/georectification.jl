@@ -126,11 +126,12 @@ function generateReflectance!(df::DataFrame, specPath::String, specHdrPath::Stri
         @inbounds df[!, "λ_$(i)"] = clamp.(π .* df[!, "λ_$(i)_rad"] ./ adjustedSpec[i], 0.0, typemax(Float64))
     end
 
-    # Also copy over the "correction" values i.e. the calibrated spectrum from the downwelling irradiance spectrometer with cosine corrector
-    for i ∈ 1:nλ_spec
-        df[!, "λ_$(i)_downwelling"] = correction[i] .* ones(nrow(df))
-    end
+    # # Also copy over the "correction" values i.e. the calibrated spectrum from the downwelling irradiance spectrometer with cosine corrector
+    # for i ∈ 1:nλ_spec
+    #     df[!, "λ_$(i)_downwelling"] = correction[i] .* ones(nrow(df))
+    # end
 
+    return  correction
 end
 
 
@@ -826,12 +827,12 @@ function georectify(bilpath::String,
     println("\treading in the BIL file")
     df = readToDataFrame(bilpath, bilhdrpath, timespath)
     println("\tgenerating reflectance data")
-    generateReflectance!(df,
-                         specpath,
-                         spechdrpath,
-                         calibrationpath,
-                         λs
-                         )
+    irrad_df = generateReflectance!(df,
+                                    specpath,
+                                    spechdrpath,
+                                    calibrationpath,
+                                    λs
+                                    )
 
     println("\tgenerating derived metrics")
     generateDerivedMetrics!(df, λs)
@@ -878,7 +879,7 @@ function georectify(bilpath::String,
     # ccall(:malloc_trim, Cvoid, (Cint,), 0)
     # GC.gc()
 
-    return res
+    return res, irrad_df
 end
 
 

@@ -187,7 +187,7 @@ T_n_E = @SMatrix [0 1 0; 1 0 0; 0 0 -1 ]  # matrix to convert navigation system 
 
 
 """
-    masterLCF(folder::String)
+    masterLCF(folder::String, basename::String)
 
 Loop through all .lcf files in `folder` and return a DataFrame containing the start and end times for each datacube aquisition. Start and end times are reported as UTC times.
 

@@ -128,25 +128,16 @@ df_sub.times_utc[1]
 df_sub.times_basename_utc[1]
 df_nodye2.tstart[1]
 
+df_sub.lcf_path[1:20]
 
-img_vis, img_therm, visCoords, visTimes, thermCoords, thermTimes = georectifyFLIR(df_sub.tiffpath[1],
-                                                                                  df_sub.jpgpath[1],
-                                                                                  df_sub.lcf_path[1],
-                                                                                  df_sub.times_basename_utc[1],
+img_vis, img_therm, visCoords, visTimes, thermCoords, thermTimes = georectifyFLIR(df_sub.tiffpath[2],
+                                                                                  df_sub.jpgpath[2],
+                                                                                  df_sub.lcf_path_basename[2],
+                                                                                  df_sub.times_basename_utc[2],
                                                                                   location_data["scotty"]["z"],
-                                                                                  12.5,
+                                                                                  10.0,
                                                                                   )
 
-# @btime georectifyFLIR(df_sub.tiffpath[1],
-#                       df_sub.jpgpath[1],
-#                       df_sub.lcf_path[1],
-#                       df_sub.times_utc[1],
-#                       location_data["scotty"]["z"],
-#                       )
-
-
-
-names(df_sub)
 
 rgb_tiff, longitudes, latitudes = getBackgroundTile(location_data["scotty"]["w"],
                                                     location_data["scotty"]["n"],
@@ -174,7 +165,7 @@ size(img_vis)
 plot!(p1, visCoords[2,1:10:end,1:10:end], visCoords[1,1:10:end,1:10:end], seriestype=:scatter, color = img_vis[1:10:end,1:10:end], alpha=0.7, ms = 1, markerstrokewidth=0, label="")
 plot!(p1, thermCoords[2,:,:], thermCoords[1, :, :], seriestype=:scatter,  zcolor=img_therm, clims=(0,30), ms=1, markerstrokewidth=0, label="")
 
-savefig("utc_time_basename__3π_4_heading_pitchAdjust_12.5_deg.png")
+# savefig("12__utc_time_basename__3π_4_heading_pitchAdjust_10.png")
 # savefig("utc_time_basename__3π_4_heading.png")
 # savefig("utc_time__3π_4_heading.png")
 # savefig("utc_time__π_4_heading.png")
@@ -183,3 +174,22 @@ savefig("utc_time_basename__3π_4_heading_pitchAdjust_12.5_deg.png")
 
 display(p1)
 
+
+names(df_sub)
+imu_df, start_time = getIMUdata(df_sub.lcf_path_basename[2])
+plot(imu_df.x, imu_df.y, imu_df.z, line_z=imu_df.time, xlabel="x", ylabel="y", zlabel="z", label="")
+
+t_cap = Dates.value(df_sub.times_basename_utc[3] - start_time)/1000
+
+pa = plot(imu_df.time, imu_df.heading_correct)
+vline!([t_cap])
+
+pb = plot(imu_df.time, imu_df.roll)
+vline!([t_cap])
+
+pc = plot(imu_df.time, imu_df.pitch)
+vline!([t_cap])
+
+plot(pa, pb, pc, layout=(3,1))
+
+t_cap
